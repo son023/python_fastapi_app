@@ -6,4 +6,7 @@ app= FastAPI()
 @app.get("/")
 def read_root():
     return "Hello World!"
+@app.get("/son")
+def read_root():
+    return "Hello World Son!"
 

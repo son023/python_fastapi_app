@@ -19,6 +19,7 @@ app.add_middleware(
 # Tải mô hình
 mon1_model = tf.keras.models.load_model('mon1_rnn.keras')
 mon2_model = tf.keras.models.load_model('mon2_rnn.keras')
+model= tf.keras.models.load_model("nhadat.keras")
 
 # Hàm hỗ trợ
 def check(x):
@@ -37,6 +38,16 @@ def tb1(a, b, c, d, x):
         return (a * 10 + b * 10 + c * 20 + d * 60) / 100
     else:
         return (a * 10 + b * 20 + c * 20 + d * 50) / 100
+    
+class HouseFeatures(BaseModel):
+    areaM2: float
+    bedroom: int
+    direction: int
+    frontage: float
+    lat: float
+    legal: int
+    long: float
+    toiletCount: int
 
 # Khai báo kiểu dữ liệu đầu vào
 class InputData(BaseModel):
@@ -79,6 +90,19 @@ async def predict_lstm(data: InputData):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/predict")
+def predict_price(features: HouseFeatures):
+    # Chuyển dữ liệu đầu vào thành định dạng numpy array
+    input_data = np.array([[features.areaM2, features.bedroom, features.direction,
+                            features.frontage, features.lat, features.legal,
+                            features.long, features.toiletCount]])
+    
+    input_data = input_data.reshape((input_data.shape[1],1,1))
+    prediction = model.predict(input_data)
+    
+    # Trả về kết quả dự đoán
+    return {"predicted_price": float(prediction[0][0])}
 
 # API kiểm tra kết nối
 @app.get('/')

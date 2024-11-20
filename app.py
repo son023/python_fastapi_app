@@ -3,7 +3,9 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import tensorflow as tf
 import numpy as np
-
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.models import load_model
+import joblib
 # Tạo ứng dụng FastAPI
 app = FastAPI()
 
@@ -20,6 +22,14 @@ app.add_middleware(
 mon1_model = tf.keras.models.load_model('mon1_rnn.keras')
 mon2_model = tf.keras.models.load_model('mon2_rnn.keras')
 model= tf.keras.models.load_model("nhadat.keras")
+
+model_5 = load_model('bilstm_model.h5')
+tokenizer = joblib.load('tokenizer.pkl')
+encoder = joblib.load('encoder.pkl')
+max_len = 100
+class InputText(BaseModel):
+    text: str
+
 
 # Hàm hỗ trợ
 def check(x):
@@ -103,6 +113,29 @@ def predict_price(features: HouseFeatures):
     
     # Trả về kết quả dự đoán
     return {"predicted_price": float(prediction[0][0])}
+
+
+@app.post("/predict_b5")
+async def predict(input: InputText):
+    input_text = input.text
+    input_sequence = tokenizer.texts_to_sequences([input_text])  
+    input_padded = pad_sequences(input_sequence, maxlen=max_len)  
+
+    predicted_prob = model_5.predict(input_padded)
+    predicted_label = (predicted_prob > 0.5).astype(int).flatten()
+
+    decoded_label = encoder.inverse_transform(predicted_label)
+
+    predicted_prob_value = float(predicted_prob[0][0])
+    predicted_label_value = int(predicted_label[0])
+    decoded_label_value = str(decoded_label[0])
+
+    return {
+    "input_text": input_text,
+    "predicted_probability": round(predicted_prob_value, 4),
+    "predicted_label": predicted_label_value,
+    "decoded_label": decoded_label_value
+    }
 
 # API kiểm tra kết nối
 @app.get('/')
